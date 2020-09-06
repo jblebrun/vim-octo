@@ -34,12 +34,15 @@ let commentPat = '^\s*#'
 let endPat = '^\s*end\s*$'
 let againPat = '^\s*again\s*$'
 let macroClosePat = '.*}\s*$'
-let dedent = '\('.g:endPat.'\|'.g:againPat.'\|'.g:macroClosePat.'\)'
+let returnPat = '^\s*;\s*$'
+let dedent = '\('.g:returnPat.'\|'.g:endPat.'\|'.g:againPat.'\|'.g:macroClosePat.'\)'
 
-" Indent patterns
+" Indent patterns - lines after things matching this should be indented
 let beginPat = '.*begin\s*$'
 let loopPat = '^\s*loop\s*$'
 let indent = '\('.g:beginPat.'\|'.g:loopPat.'\)'
+
+let prevNonCode = '\(:\|#\|}\|;\)'
 
 " Find the previous code line, ignoring : directives and labels
 " Will be either the first line, or a code line.
@@ -47,7 +50,7 @@ function! PrevCodeLine(lnum)
     let n = prevnonblank(a:lnum - 1)
     while n > 0
         let codeline = getline(n)
-        if codeline !~ '^\(:\|#\|}\)'
+        if codeline !~ g:prevNonCode
             return n
         endif
         let n = prevnonblank(n-1)
