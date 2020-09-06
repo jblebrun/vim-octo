@@ -27,7 +27,8 @@ let s:cpo_save = &cpo
 set cpo&vim
 
 " Special patterns
-let directivePat = '^\s*:'
+" Directive: ': labelName', ':alias' and ':const'
+let directivePat = '^\s*:\(\s\+\|const\|alias\)'
 let commentPat = '^\s*#'
 
 " Dedent patterns
@@ -42,7 +43,7 @@ let beginPat = '.*begin\s*$'
 let loopPat = '^\s*loop\s*$'
 let indent = '\('.g:beginPat.'\|'.g:loopPat.'\)'
 
-let prevNonCode = '\(:\|#\|}\|;\)'
+let prevNonCode = '\('.directivePat.'\|'.commentPat.'\|'.returnPat.'\|'.macroClosePat.'\)'
 
 " Find the previous code line, ignoring : directives and labels
 " Will be either the first line, or a code line.
@@ -103,15 +104,7 @@ endfunction
 " Indent code or comment line based on the indentation of the previous non-comment,
 " non-directive "code" line.
 function! OctoIndentFromPrevious(lnum) 
-    " Otherwise it's code. We use the previous code indentation.
     let prevcodelinenum = PrevCodeLine(a:lnum)
-    
-    " Unless there isn't a previous code line, we assume this is the 
-    " first code or comment after
-    " for the first line after a directive, and indent.
-    if prevcodelinenum == 0
-        return shiftwidth()
-    endif
     
     let previndent = indent(prevcodelinenum)
     let prevcodeline = getline(prevcodelinenum)
@@ -119,6 +112,12 @@ function! OctoIndentFromPrevious(lnum)
     " Previous line triggers an indent, so bump up 1 level.
     if prevcodeline =~ g:indent
         return previndent + shiftwidth()
+    endif
+
+    " We've already handled 0-indented comments and directives,
+    " so at this point everything should be at least one level in.
+    if previndent <= 0
+        return shiftwidth()
     endif
 
     " Otherwise just use previous code indentation
@@ -146,7 +145,9 @@ function! OctoIndent(lnum) abort
 
     " Dedent after `end`, `again`, `}`
     if linetext =~ g:dedent 
-        return indent(PrevCodeLine(a:lnum))- shiftwidth()
+        let prevcodelinenum = PrevCodeLine(a:lnum)
+        let previndent = indent(prevcodelinenum)
+        return previndent - shiftwidth()
     endif
     
     return OctoIndentFromPrevious(a:lnum)
